@@ -1,0 +1,22 @@
+# ROS 2 build artifacts
+build/
+install/
+log/
+
+# General CMake garbage
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Python (if you ever add Python nodes later)
+__pycache__/
+*.pyc
+
+# VSCode and IDE stuff (optional but useful)
+.vscode/
+.idea/
+
+# macOS and Linux temp files
+.DS_Store
+*.swp
