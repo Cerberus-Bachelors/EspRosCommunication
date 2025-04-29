@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "cerberus_msgs/msg/sensor_data.hpp"
+#include "cerberus_msgs/msg/esp_commands.hpp"
 
 class SensorReaderNode : public rclcpp::Node {
 public:
@@ -40,7 +41,8 @@ public:
             return;
         }
 
-        publisher_ = this->create_publisher<cerberus_msgs::msg::SensorData>("sensors_data", 10);
+        sensor_publisher_ = this->create_publisher<cerberus_msgs::msg::SensorData>("sensors_data", 10);
+        command_publisher_ = this->create_publisher<cerberus_msgs::msg::EspCommands>("esp_commands", 10);
 
         timer_ = this->create_wall_timer(
             std::chrono::milliseconds(50),
@@ -80,7 +82,7 @@ public:
                     }
                 }
 
-                if (parsed_data.size() >= 10) {
+                if (parsed_data.size() >= 13) {
                     cerberus_msgs::msg::SensorData msg;
                     msg.accel_x = parsed_data[0];
                     msg.accel_y = parsed_data[1];
@@ -93,7 +95,14 @@ public:
                     msg.longitude = parsed_data[8];
                     msg.altitude = parsed_data[9];
 
-                    publisher_->publish(msg);
+                    sensor_publisher_->publish(msg);
+
+                    cerberus_msgs::msg::EspCommands command_msg;
+                    command_msg.calibrate = parsed_data[10];
+                    command_msg.startup = parsed_data[11];
+                    command_msg.shutdown = parsed_data[12];
+
+                    command_publisher_->publish(command_msg);
                 } else {
                     RCLCPP_WARN(this->get_logger(), "Incomplete data received (%ld values)", parsed_data.size());
                 }
@@ -104,7 +113,8 @@ public:
     std::string port_;
     int baudrate_;
     serial::Serial serial_;
-    rclcpp::Publisher<cerberus_msgs::msg::SensorData>::SharedPtr publisher_;
+    rclcpp::Publisher<cerberus_msgs::msg::SensorData>::SharedPtr sensor_publisher_;
+    rclcpp::Publisher<cerberus_msgs::msg::EspCommands>::SharedPtr command_publisher_;
     rclcpp::TimerBase::SharedPtr timer_;
 };
   
