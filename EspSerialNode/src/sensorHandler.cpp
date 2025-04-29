@@ -82,7 +82,7 @@ public:
                     }
                 }
 
-                if (parsed_data.size() >= 13) {
+                if (parsed_data.size() >= 21) {
                     cerberus_msgs::msg::SensorData msg;
                     msg.accel_x = parsed_data[0];
                     msg.accel_y = parsed_data[1];
@@ -98,9 +98,9 @@ public:
                     sensor_publisher_->publish(msg);
 
                     cerberus_msgs::msg::EspCommands command_msg;
-                    command_msg.calibrate = parsed_data[10];
-                    command_msg.startup = parsed_data[11];
-                    command_msg.shutdown = parsed_data[12];
+                    command_msg.calibrate = parsed_data[18];
+                    command_msg.startup = parsed_data[19];
+                    command_msg.shutdown = parsed_data[20];
 
                     command_publisher_->publish(command_msg);
                 } else {
