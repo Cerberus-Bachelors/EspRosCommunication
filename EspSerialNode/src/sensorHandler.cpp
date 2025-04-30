@@ -7,6 +7,7 @@
 
 #include "cerberus_msgs/msg/sensor_data.hpp"
 #include "cerberus_msgs/msg/esp_commands.hpp"
+#include "std_msgs/msg/bool.hpp"
 
 class SensorReaderNode : public rclcpp::Node {
 public:
@@ -44,16 +45,25 @@ public:
         sensor_publisher_ = this->create_publisher<cerberus_msgs::msg::SensorData>("sensors_data", 10);
         command_publisher_ = this->create_publisher<cerberus_msgs::msg::EspCommands>("esp_commands", 10);
 
-        timer_ = this->create_wall_timer(
+        calibrateStatus_ = this->create_subscription<std_msgs::msg::Bool>("calibrateStatus", 10, std::bind(&SensorReaderNode::calibrateCallback, this, std::placeholders::_1));
+        startupStatus_ = this ->create_subscription<std_msgs::msg::Bool>("startupStatus", 10, std::bind(&SensorReaderNode::startupCallback, this, std::placeholders::_1));
+        errorStatus_ = this->create_subscription<std_msgs::msg::Bool>("errorStatus", 10, std::bind(&SensorReaderNode::errorCallback, this, std::placeholders::_1));
+
+        read_timer_ = this->create_wall_timer(
             std::chrono::milliseconds(50),
             std::bind(&SensorReaderNode::readSerial, this)
+        );
+
+        write_timer_ = this->create_wall_timer(
+            std::chrono::milliseconds(200),
+            std::bind(&SensorReaderNode::writeSerial, this)
         );
     }
 
     private:
     std::string serial_buffer_;
 
-    void readSerial() {
+    void readSerial(){
         if (serial_.available()) {
             std::string new_data = serial_.read(serial_.available());
             serial_buffer_ += new_data;
@@ -110,12 +120,42 @@ public:
         }
     }
 
+    void calibrateCallback(const std_msgs::msg::Bool::SharedPtr msg) {
+    calibrate_ = msg->data;
+    }
+
+    void startupCallback(const std_msgs::msg::Bool::SharedPtr msg) {
+        startup_ = msg->data;
+    }
+
+    void errorCallback(const std_msgs::msg::Bool::SharedPtr msg) {
+        error_ = msg->data;
+    }
+
+    void writeSerial(){
+        std::stringstream statusmsg;
+        statusmsg << (calibrate_ ? "1" : "0") << ","
+                << (startup_ ? "1" : "0") << ","
+                << (error_ ? "1" : "0") << "\n";
+
+        if (serial_.isOpen()) {
+            serial_.write(statusmsg.str());
+        }
+    }
+
     std::string port_;
     int baudrate_;
     serial::Serial serial_;
+    bool calibrate_ = false;
+    bool startup_ = false;
+    bool error_ = false;
     rclcpp::Publisher<cerberus_msgs::msg::SensorData>::SharedPtr sensor_publisher_;
     rclcpp::Publisher<cerberus_msgs::msg::EspCommands>::SharedPtr command_publisher_;
-    rclcpp::TimerBase::SharedPtr timer_;
+    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr calibrateStatus_;
+    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr startupStatus_;
+    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr errorStatus_;
+    rclcpp::TimerBase::SharedPtr read_timer_;
+    rclcpp::TimerBase::SharedPtr write_timer_;
 };
   
 int main(int argc, char * argv[]) {
